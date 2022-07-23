@@ -20,7 +20,8 @@ class PatchEmbedding(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, dim, n_heads, qkv_bias=True, attn_dropout=0., proj_dropout=0.):
+    def __init__(self, dim: int, n_heads: int, qkv_bias: bool = True, attn_dropout: float = 0.,
+                 proj_dropout: float = 0.):
         super().__init__()
 
         self.n_heads = n_heads
@@ -62,7 +63,7 @@ class Attention(nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self, in_features, hidden_features, out_features, drop=0.):
+    def __init__(self, in_features: int, hidden_features: int, out_features: int, drop: float = 0.):
         super().__init__()
         self.fc1 = nn.Linear(in_features=in_features, out_features=hidden_features)
         self.act = nn.GELU()
@@ -78,7 +79,8 @@ class MLP(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, dim, n_heads, qkv_bias=True, mlp_ratio=4., attn_drop=0., drop=0.):
+    def __init__(self, dim: int, n_heads: int, qkv_bias: bool = True, mlp_ratio: float = 4., attn_drop: float = 0.,
+                 drop: float = 0.):
         super().__init__()
 
         self.norm1 = nn.LayerNorm(dim, eps=1e-6)
@@ -94,23 +96,23 @@ class TransformerBlock(nn.Module):
 
 class VisionTransformer(nn.Module):
     def __init__(self,
-                 image_size=384,
-                 patch_size=16,
-                 in_channels=3,
-                 n_classes=1000,
-                 embed_dim=768,
-                 depth=12,
-                 n_heads=12,
-                 mlp_ratio=4.,
-                 qkv_bias=True,
-                 drop=0.,
-                 attn_drop=0, ):
+                 image_size: int = 384,
+                 patch_size: int = 16,
+                 in_channels: int = 3,
+                 n_classes: int = 1000,
+                 embed_dim: int = 768,
+                 depth: int = 12,
+                 n_heads: int = 12,
+                 mlp_ratio: float = 4.,
+                 qkv_bias: bool = True,
+                 drop: float = 0.,
+                 attn_drop: float = 0, ):
         super().__init__()
 
         self.patch_embed = PatchEmbedding(image_size, patch_size, in_channels, embed_dim)
 
         self.class_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(1, 1 + self.patch_embed.n_patches, embed_dim)  # +1 for class token
+        self.pos_embed = nn.Parameter(torch.zeros(1, 1 + self.patch_embed.n_patches, embed_dim))  # +1 for class token
         self.pos_drop = nn.Dropout(p=drop)
 
         self.blocks = nn.ModuleList([
