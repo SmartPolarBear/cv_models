@@ -20,7 +20,7 @@ class PatchEmbedding(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, dim, n_heads, qkv_bias, attn_dropout, proj_dropout):
+    def __init__(self, dim, n_heads, qkv_bias=True, attn_dropout=0., proj_dropout=0.):
         super().__init__()
 
         self.n_heads = n_heads
@@ -58,4 +58,84 @@ class Attention(nn.Module):
         x = self.proj(wa)
         x = self.proj_drop(x)
 
+        return x
+
+
+class MLP(nn.Module):
+    def __init__(self, in_features, hidden_features, out_features, drop=0.):
+        super().__init__()
+        self.fc1 = nn.Linear(in_features=in_features, out_features=hidden_features)
+        self.act = nn.GELU()
+        self.fc2 = nn.Linear(in_features=hidden_features, out_features=out_features)
+        self.dropout = nn.Dropout(p=drop)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.fc2(x)
+        x = self.dropout(x)
+        return x
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, dim, n_heads, qkv_bias=True, mlp_ratio=4., attn_drop=0., drop=0.):
+        super().__init__()
+
+        self.norm1 = nn.LayerNorm(dim, eps=1e-6)
+        self.attn = Attention(dim, n_heads, qkv_bias, attn_drop, drop)
+        self.norm2 = nn.LayerNorm(dim, eps=1e-6)
+        self.mlp = MLP(dim, int(dim * mlp_ratio), dim, drop)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x + self.attn(self.norm1(x))
+        x = x + self.mlp(self.norm2(x))
+        return x
+
+
+class VisionTransformer(nn.Module):
+    def __init__(self,
+                 image_size=384,
+                 patch_size=16,
+                 in_channels=3,
+                 n_classes=1000,
+                 embed_dim=768,
+                 depth=12,
+                 n_heads=12,
+                 mlp_ratio=4.,
+                 qkv_bias=True,
+                 drop=0.,
+                 attn_drop=0, ):
+        super().__init__()
+
+        self.patch_embed = PatchEmbedding(image_size, patch_size, in_channels, embed_dim)
+
+        self.class_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.pos_embed = nn.Parameter(1, 1 + self.patch_embed.n_patches, embed_dim)  # +1 for class token
+        self.pos_drop = nn.Dropout(p=drop)
+
+        self.blocks = nn.ModuleList([
+            TransformerBlock(embed_dim, n_heads, qkv_bias, mlp_ratio, attn_drop, drop)
+            for _ in range(depth)
+        ])
+
+        self.norm = nn.LayerNorm(embed_dim, 1e-6)
+        self.classification_head = nn.Linear(embed_dim, n_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B = x.shape[0]
+
+        x = self.patch_embed(x)
+
+        class_token = self.class_token.expand(B, -1, -1)
+        x = torch.concat((class_token, x), dim=1)
+        x = x + self.pos_embed
+        x = self.pos_drop(x)
+
+        for block in self.blocks:
+            x = block(x)
+
+        x = self.norm(x)
+
+        class_token_fin = x[:, 0]
+        x = self.classification_head(class_token_fin)
         return x
