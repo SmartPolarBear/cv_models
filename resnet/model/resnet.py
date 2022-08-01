@@ -80,7 +80,9 @@ class ResNetClassifierHead(nn.Module):
 
 
 class ResNet(nn.Module):
-    stage_layers_map = {50: [3, 4, 6, 3], 101: [3, 4, 23, 3], 152: [3, 4, 36, 3]}
+    stage_layers_map = {50: [3, 4, 6, 3],
+                        101: [3, 4, 23, 3],
+                        152: [3, 4, 36, 3]}
 
     in_channels_map = [64, 256, 512, 1024]
     out_channels_map = [256, 512, 1024, 2048]
@@ -102,7 +104,7 @@ class ResNet(nn.Module):
             for i in range(4)
         ])
 
-        self.head = ResNetClassifierHead(in_channels=self.out_channels_map[3])
+        self.head = ResNetClassifierHead(in_channels=self.out_channels_map[3], num_classes=num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv1(x)
