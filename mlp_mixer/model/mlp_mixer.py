@@ -40,8 +40,8 @@ class MixerBlock(nn.Module):
     def __init__(self, n_embeds, channels, token_mlp_dim, channel_mlp_dim, token_drop=0., channel_drop=0.):
         super().__init__()
 
-        self.norm1 = nn.LayerNorm(n_embeds)
-        self.norm2 = nn.LayerNorm(n_embeds)
+        self.norm1 = nn.LayerNorm(channels)
+        self.norm2 = nn.LayerNorm(channels)
 
         self.mlp1 = MLP(dim=n_embeds, hidden_dim=token_mlp_dim, drop=token_drop)
         self.mlp2 = MLP(dim=channels, hidden_dim=channel_mlp_dim, drop=channel_drop)
@@ -75,7 +75,7 @@ class MLPMixer(nn.Module):
                  ):
         super().__init__()
 
-        self.n_embeds = image_size // patch_size
+        self.n_embeds = (image_size // patch_size) ** 2
         self.patch_embed = PatchEmbedding(image_size, patch_size, in_channels, embedding_dim)
 
         token_mlp_dim = int(self.n_embeds * token_mlp_ratio)

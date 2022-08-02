@@ -12,9 +12,9 @@ class BottleneckBlock(nn.Module):
         self.bn1 = nn.BatchNorm2d(in_channels // 4)
         self.relu1 = nn.ReLU()
 
-        self.conv2 = nn.Conv2d(in_channels=in_channels // 4, out_channels=out_channels // 4,
+        self.conv2 = nn.Conv2d(in_channels=in_channels // 4, out_channels=in_channels // 4,
                                kernel_size=3, stride=1 if not downsample else 2,
-                               padding='same')
+                               padding=1)
         self.bn2 = nn.BatchNorm2d(in_channels // 4)
         self.relu2 = nn.ReLU()
 
@@ -25,8 +25,7 @@ class BottleneckBlock(nn.Module):
 
         self.shortcut_conv = nn.Sequential() if not downsample and in_channels == out_channels else \
             nn.Sequential(nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                                    kernel_size=1, stride=1 if not downsample else 2,
-                                    padding='same'),
+                                    kernel_size=1, stride=1 if not downsample else 2),
                           nn.BatchNorm2d(out_channels))
 
         self.relu = nn.ReLU()
@@ -74,7 +73,10 @@ class ResNetClassifierHead(nn.Module):
         self.linear = nn.Linear(in_features=in_channels, out_features=num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # B,C,H,W->B,C,1,1
         x = self.gap(x)
+        # B,C,1,1->B,C
+        x = torch.flatten(x, start_dim=1)
         x = self.linear(x)
         return x
 
