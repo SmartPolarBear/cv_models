@@ -52,13 +52,14 @@ class ConvBNReluLayer(nn.Module):
 
 class InvertedBottleneckBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int,
-                 expansion_ratio: float = 6.0,
+                 expansion_ratio: float = 1.0,
                  stride=1):
         super(InvertedBottleneckBlock, self).__init__()
 
         expanded: int = int(expansion_ratio * in_channels)
 
-        self.pw1 = ConvBNReluLayer(in_channels=in_channels, out_channels=expanded)
+        self.pw1 = nn.Sequential() if expansion_ratio == 1.0 \
+            else ConvBNReluLayer(in_channels=in_channels, out_channels=expanded)
 
         self.dw = ConvBNReluLayer(in_channels=expanded, out_channels=expanded,
                                   kernel_size=3, stride=stride,
@@ -78,6 +79,20 @@ class InvertedBottleneckBlock(nn.Module):
         if self.use_shortcut:
             x = x + residual
 
+        return x
+
+
+class MobileNetV2ConvClassifier(nn.Module):
+    def __init__(self, in_channels: int, classes: int):
+        super(MobileNetV2ConvClassifier, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv2d(in_channels=in_channels, out_channels=classes, kernel_size=1)
+        self.flatten = nn.Flatten(start_dim=1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.avg_pool(x)
+        x = self.conv(x)
+        x = self.flatten(x)
         return x
 
 
@@ -111,25 +126,23 @@ class MobileNetV2(nn.Module):
                     InvertedBottleneckBlock(in_channels=input_channels, out_channels=out_channels,
                                             stride=s if i == 0 else 1, expansion_ratio=t)
                 )
-                input_channels = t
+                input_channels = out_channels
 
         self.conv2 = ConvBNReluLayer(in_channels=input_channels, out_channels=last_channels, kernel_size=1)
 
-        self.gap = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(start_dim=1),
             nn.Dropout(p=classifier_drop),
             nn.Linear(last_channels, classes)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.conv1(x)
 
+        x = self.conv1(x)
         for layer in self.layers:
             x = layer(x)
-
         x = self.conv2(x)
 
-        x = self.gap(x)
         x = self.classifier(x)
-
         return x
