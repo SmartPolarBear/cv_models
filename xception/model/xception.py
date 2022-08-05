@@ -67,7 +67,7 @@ class EntryBlock(nn.Module):
         self.conv2 = ConvBNReLULayer(in_channels=out_channels, out_channels=out_channels,
                                      kernel_size=3, stride=1, padding=1, separable=True,
                                      act=False, act_before=False)
-        self.pool = nn.MaxPool2d(kernel_size=3, stride=2)
+        self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         residual = self.shortcut(x)
@@ -114,7 +114,7 @@ class ExitBlock(nn.Module):
                                      kernel_size=3, stride=1, padding=1, separable=True,
                                      act=True, act_before=True)
 
-        self.pool = nn.MaxPool2d(kernel_size=3, stride=2)
+        self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         residual = self.shortcut(x)
@@ -180,6 +180,8 @@ class MiddleFlow(nn.Module):
 
 class ExitFlow(nn.Module):
     def __init__(self, out_channels: int = 2048):
+        super(ExitFlow, self).__init__()
+
         self.block = ExitBlock(in_channels=728, out_channels=1024)
 
         self.conv1 = ConvBNReLULayer(in_channels=1024, out_channels=1536,
