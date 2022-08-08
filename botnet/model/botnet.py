@@ -5,38 +5,49 @@ from resnet.model.resnet import ResNetClassifierHead
 
 
 class MHSABlock(nn.Module):
-    def __init__(self, in_channels: int, heads: int, w: int, d: int):
+    def __init__(self, in_channels: int, w: int, h: int, heads: int = 4):
         super(MHSABlock, self).__init__()
 
         self.heads = heads
+        self.emb_dim = in_channels // heads
 
-        self.wq = nn.Conv2d(in_channels=in_channels, out_channels=in_channels,
+        self.scale = in_channels ** -0.5
+
+        self.wq = nn.Conv2d(in_channels=in_channels, out_channels=self.emb_dim * heads,
                             kernel_size=1, stride=1)
-        self.wk = nn.Conv2d(in_channels=in_channels, out_channels=in_channels,
+        self.wk = nn.Conv2d(in_channels=in_channels, out_channels=self.emb_dim * heads,
                             kernel_size=1, stride=1)
-        self.wv = nn.Conv2d(in_channels=in_channels, out_channels=in_channels,
+        self.wv = nn.Conv2d(in_channels=in_channels, out_channels=self.emb_dim * heads,
                             kernel_size=1, stride=1)
 
-        self.rh = nn.Parameter(torch.randn(1, heads, in_channels // heads, 1, d), requires_grad=True)
-        self.rw = nn.Parameter(torch.randn(1, heads, in_channels // heads, w, 1), requires_grad=True)
+        self.rh = nn.Parameter(torch.randn(1, heads, self.emb_dim, 1, h), requires_grad=True)
+        self.rw = nn.Parameter(torch.randn(1, heads, self.emb_dim, w, 1), requires_grad=True)
 
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # print("x:", x.shape)
         B, C, H, W = x.shape
 
-        q = self.wq(x).view(B, self.heads, C // self.heads, -1)
-        k = self.wk(x).view(B, self.heads, C // self.heads, -1)
-        v = self.wv(x).view(B, self.heads, C // self.heads, -1)
+        q = self.wq(x).view(B, self.heads, self.emb_dim, -1).permute(0, 1, 3, 2)  # B, heads, H*W, Ch
+        kt = self.wk(x).view(B, self.heads, self.emb_dim, -1)  # B, heads,Ch, H*W
+        v = self.wv(x).view(B, self.heads, self.emb_dim, -1).permute(0, 1, 3, 2)  # B, heads, H*W, Ch
 
-        qk = torch.matmul(q.permute(0, 1, 3, 2), k)
+        q *= self.scale
 
-        pos_emb = (self.rh + self.rw).view(1, self.heads, C // self.heads, -1)
-        qr = torch.matmul(pos_emb.permute(0, 1, 3, 2), q)
+        # print("q,kt:", q.shape, kt.shape)
+        qkt = torch.matmul(q, kt)
 
-        attn = self.softmax(qk + qr)
+        rt = (self.rh + self.rw).view(1, self.heads, self.emb_dim, -1)
 
-        y = torch.matmul(v, attn.permute(0, 1, 3, 2))
+        # print("q,rt:", q.shape, rt.shape)
+        qrt = torch.matmul(q, rt)
+
+        attn = self.softmax(qkt + qrt)
+
+        y = torch.matmul(attn, v)
+
+        # print("y:", y.shape)
         y = y.view(B, C, H, W)
 
         return y
@@ -84,7 +95,7 @@ class BottleneckBlock(nn.Module):
             assert 'h' in kwargs.keys()
 
             self.conv2 = nn.Sequential(
-                MHSABlock(in_channels=in_channels // 4, heads=kwargs['heads'], w=kwargs['w'], d=kwargs['h']),
+                MHSABlock(in_channels=in_channels // 4, heads=kwargs['heads'], w=kwargs['w'], h=kwargs['h']),
                 nn.AvgPool2d(kernel_size=2, stride=2) if downsample else nn.Sequential(),
                 nn.BatchNorm2d(in_channels // 4),
                 nn.ReLU()
@@ -121,7 +132,7 @@ class BoTNetStage(nn.Module):
                  downsample: bool = True, mhsa: bool = True):
         super().__init__()
 
-        feat_size = image_size // 32
+        feat_size = image_size // 16
 
         self.blocks = nn.ModuleList([
             BottleneckBlock(in_channels=in_channels, out_channels=out_channels,
@@ -129,7 +140,8 @@ class BoTNetStage(nn.Module):
         ])
         for i in range(layers - 2):
             self.blocks.append(BottleneckBlock(in_channels=out_channels, out_channels=out_channels,
-                                               downsample=False, mhsa=mhsa, w=feat_size, h=feat_size, heads=heads))
+                                               downsample=False, mhsa=mhsa, w=feat_size // 2, h=feat_size // 2,
+                                               heads=heads))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         for block in self.blocks:
