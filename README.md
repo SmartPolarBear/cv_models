@@ -22,15 +22,16 @@ Implement common deep networks for computer vision with pytorch from scratch.
 
 ### Common Backbones
 
-| Model              | Status | Paper                                                                             |
-|--------------------|--------|-----------------------------------------------------------------------------------|
-| ConvNext           | 🔄️    | [A ConvNet for the 2020s](https://arxiv.org/abs/2201.03545)                       |
-| MLP-Mixer          | ✅      | [MLP-Mixer: An all-MLP Architecture for Vision](https://arxiv.org/abs/2105.01601) |
-| ResNet             | ✅      | []()                                                                              |
-| ResNeXt            | 🔄️    | []()                                                                              |
-| Swin Transformer   | 🔄️    | []()                                                                              |
-| Vision Transformer | 🔄️    | []()                                                                              |
-| Xception           | 🔄️    | []()                                                                              |
+| Model              | Status | Paper                                                                                                                                                                                |
+|--------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ConvNext           | 🔄️    | [A ConvNet for the 2020s](https://arxiv.org/abs/2201.03545)                                                                                                                          |
+| MLP-Mixer          | ✅      | [MLP-Mixer: An all-MLP Architecture for Vision](https://arxiv.org/abs/2105.01601)                                                                                                    |
+| ResNet             | ✅      | []()                                                                                                                                                                                 |
+| ResNeXt            | 🔄️    | []()                                                                                                                                                                                 |
+| BoTNet             | 🔄️    | [Bottleneck Transformers for Visual Recognition](https://openaccess.thecvf.com//content/CVPR2021/papers/Srinivas_Bottleneck_Transformers_for_Visual_Recognition_CVPR_2021_paper.pdf) |
+| Swin Transformer   | 🔄️    | []()                                                                                                                                                                                 |
+| Vision Transformer | ✅      | [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929v2)                                                                     |
+| Xception           | ✅      | [Xception: Deep Learning with Depthwise Separable Convolutions](https://arxiv.org/abs/1610.02357)                                                                                    |
 
 ### Lightweight/Mobile Backbones
 
@@ -52,6 +53,10 @@ Implement common deep networks for computer vision with pytorch from scratch.
 No detailed plan yet.
 
 ## 3D
+
+No detailed plan yet.
+
+## Plugin-in Modules
 
 No detailed plan yet.
 
