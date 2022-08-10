@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from enum import Enum, unique, auto
-from typing import Tuple
+from enum import Enum, unique
 
 
 def drop_path(x, drop_prob: float = 0., training: bool = False):
