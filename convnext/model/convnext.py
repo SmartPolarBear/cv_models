@@ -73,13 +73,13 @@ class ConvNeXTBlock(nn.Module):
         self.drop_path = DropPath(drop_prob=drop_path)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        residual = x
+        residual = x  # B,C,H,W
 
         x = self.dw(x)
-        x = self.ln(x)  # B,C,H,W
 
-        x.permute(0, 2, 3, 1)  # B,H,W,C
+        x = x.permute(0, 2, 3, 1)  # B,H,W,C
 
+        x = self.ln(x)
         x = self.pw1(x)
         x = self.gelu(x)
         x = self.pw2(x)
@@ -87,7 +87,7 @@ class ConvNeXTBlock(nn.Module):
         if self.layer_scale is not None:
             x = self.layer_scale * x
 
-        x.permute(0, 3, 1, 2)  # B,C,H,W
+        x = x.permute(0, 3, 1, 2)  # B,C,H,W
 
         x = residual + self.drop_path(x)
         return x
@@ -128,7 +128,7 @@ class ConvNeXT(nn.Module):
             nn.Sequential(
                 nn.Conv2d(in_channels=in_channels, out_channels=self.channels[0],
                           kernel_size=4, stride=4),
-                LayerNorm(normalized_shape=in_channels, data_format='channels_first')
+                LayerNorm(normalized_shape=self.channels[0], data_format='channels_first')
             )
         ])
 
@@ -162,7 +162,6 @@ class ConvNeXT(nn.Module):
             x = self.downsamples[i](x)
             x = self.stages[i](x)
 
-        x = self.norm(x)
         x = self.classifier(x)
 
         return x
